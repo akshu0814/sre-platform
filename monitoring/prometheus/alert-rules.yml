@@ -1,0 +1,64 @@
+groups:
+  - name: order-service-alerts
+    rules:
+      - alert: OrderServiceHighErrorRate
+        expr: |
+          rate(http_requests_total{status_code=~"5.."}[5m]) /
+          rate(http_requests_total[5m]) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+          team: sre
+          service: order-service
+        annotations:
+          summary: "High error rate on order service"
+          description: "Error rate is {{ $value }}% which is above 5% threshold"
+
+      - alert: OrderServiceHighLatency
+        expr: |
+          histogram_quantile(0.99, 
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+          service: order-service
+        annotations:
+          summary: "High latency on order service"
+          description: "p99 latency is {{ $value }}s which is above 500ms threshold"
+
+      - alert: OrderServiceDown
+        expr: |
+          up{job="order-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+          service: order-service
+        annotations:
+          summary: "Order service is down"
+          description: "Order service has been down for more than 1 minute"
+
+      - alert: NodeCPUHigh
+        expr: |
+          100 - (avg by(instance) 
+            (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "High CPU usage on node"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total[15m]) * 900 > 5
+        for: 0m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.pod }} is restarting frequently"

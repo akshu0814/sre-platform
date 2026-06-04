@@ -1,0 +1,64 @@
+# Values for kube-prometheus-stack Helm chart
+# This deploys Prometheus + Grafana + Alertmanager together
+
+prometheus:
+  enabled: true
+  prometheusSpec:
+    retention: 30d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    additionalScrapeConfigs:
+      - job_name: 'order-service'
+        static_configs:
+          - targets: ['order-service:3000']
+        metrics_path: '/metrics'
+
+grafana:
+  enabled: true
+  adminPassword: "admin123"
+  persistence:
+    enabled: true
+    size: 5Gi
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: 'Restaurant SRE'
+          type: file
+          disableDeletion: false
+          options:
+            path: /var/lib/grafana/dashboards/default
+  dashboardsConfigMaps:
+    default: "grafana-dashboards"
+
+alertmanager:
+  enabled: true
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'slack'
+    receivers:
+      - name: 'slack'
+        slack_configs:
+          - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+            channel: '#sre-alerts'
+            title: '{{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
