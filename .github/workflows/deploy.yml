@@ -10,6 +10,10 @@ env:
   IMAGE_NAME: order-service
   IMAGE_TAG: ${{ github.sha }}
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   test:
     name: Run Tests
